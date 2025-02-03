@@ -10,32 +10,30 @@ jobs:
     - name: Çıkartma
       run: Expand-Archive ngrok.zip
     
-    - name: Runner Başlangıç Ekranını Özelleştir
+    - name: Başlangıç Ekranını Özelleştir
       run: |
-        # Runner servisini durdur
-        Stop-Service "actions.runner.*" -ErrorAction SilentlyContinue
-        
         # Özel başlangıç betiği oluştur
         $startupScript = @'
         @echo off
         cls
+        color 0F
+        mode con: cols=50 lines=5
+        title VDS Baglantisi
+        :loop
+        cls
         echo.
+        echo              Bu ekrani kapatmayin!
         echo.
-        echo                Bu ekrani kapatmayin!
-        echo.
-        echo.
+        timeout /t 1 /nobreak >nul
+        goto loop
 '@
-        Set-Content -Path "C:\ProgramData\runner-startup.cmd" -Value $startupScript
+        Set-Content -Path "C:\startup.cmd" -Value $startupScript -Encoding ASCII
         
-        # Runner servisini özel başlangıç betiğiyle başlatacak şekilde ayarla
-        $servicePath = Get-WmiObject -Class Win32_Service -Filter "DisplayName LIKE 'actions.runner.%'" | Select-Object -ExpandProperty PathName
-        if ($servicePath) {
-            $newPath = $servicePath + " --startupscript C:\ProgramData\runner-startup.cmd"
-            Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\actions.runner.*" -Name "ImagePath" -Value $newPath
-        }
-        
-        # Runner servisini yeniden başlat
-        Start-Service "actions.runner.*"
+        # Zamanlanmış görev oluştur
+        $action = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c start /min C:\startup.cmd"
+        $trigger = New-ScheduledTaskTrigger -AtLogOn
+        $principal = New-ScheduledTaskPrincipal -UserId "runneradmin" -RunLevel Highest
+        Register-ScheduledTask -TaskName "VDSStartup" -Action $action -Trigger $trigger -Principal $principal -Force
     
     - name: Kimlik Doğrulama
       id: auth
