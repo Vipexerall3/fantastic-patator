@@ -16,7 +16,7 @@ jobs:
         # Rastgele şifre oluştur
         $chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?"
         $randomPart = -join ((1..12) | ForEach-Object { $chars[(Get-Random -Maximum $chars.Length)] })
-        $vdsPassword = "Clodra.Git" + $randomPart
+        $vdsPassword = $randomPart
         
         $tokenIndex = 1
         $success = $false
