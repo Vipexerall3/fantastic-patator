@@ -3,12 +3,15 @@ on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: windows-latest
+    outputs:
+      endpoint: ${{ steps.get_endpoint.outputs.endpoint }}
     steps:
     - name: Download
       run: Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
     - name: Extract
       run: Expand-Archive ngrok.zip
     - name: Auth and Create Tunnel
+      id: get_endpoint
       run: |
         $tokenIndex = 1
         $success = $false
@@ -22,23 +25,28 @@ jobs:
             try {
               & .\ngrok\ngrok.exe authtoken $token 2>&1
               
-              # Enable TS and RDP settings before starting ngrok
+              # Enable TS and RDP settings
               Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
               Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
               Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
               Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "VipexB!3" -Force)
               
-              # Start ngrok in background and capture endpoint
-              Start-Process -NoNewWindow .\ngrok\ngrok.exe -ArgumentList "tcp","3389" -RedirectStandardOutput "ngrok.log"
-              Start-Sleep -Seconds 5
-              $ngrokOutput = Get-Content "ngrok.log" -Raw
-              $endpoint = [regex]::Match($ngrokOutput, "tcp://(.+?)\s").Groups[1].Value
+              # Start ngrok and capture endpoint
+              $ngrok = Start-Process .\ngrok\ngrok.exe -ArgumentList "tcp","3389" -PassThru -NoNewWindow -RedirectStandardOutput "ngrok.log"
+              Start-Sleep -Seconds 10
               
-              # Save endpoint to file for next job
-              $endpoint | Out-File -FilePath "endpoint.txt"
+              # Read ngrok endpoint from API
+              $api = Invoke-RestMethod -Uri "http://localhost:4040/api/tunnels"
+              $endpoint = $api.tunnels[0].public_url -replace "tcp://", ""
+              
+              Write-Host "::set-output name=endpoint::$endpoint"
               
               # Keep the tunnel running
               while ($true) {
+                if ($ngrok.HasExited) {
+                  Write-Host "Ngrok terminated, restarting..."
+                  $ngrok = Start-Process .\ngrok\ngrok.exe -ArgumentList "tcp","3389" -PassThru -NoNewWindow
+                }
                 Start-Sleep -Seconds 10
               }
               
@@ -77,6 +85,6 @@ jobs:
         Write-Host "👤 Kullanıcı Adı: runneradmin"
         Write-Host "🔑 Şifre: VipexB!3"
         Write-Host "🌐 Port: 3389"
-        Write-Host "🔗 Bağlantı Adresi: ${{ steps.get_endpoint.outputs.endpoint }}"
+        Write-Host "🔗 Bağlantı Adresi: ${{ needs.build.outputs.endpoint }}"
         Write-Host "==============================="
         Write-Host "✅ VDS aktif ve bağlantıya hazır!"
