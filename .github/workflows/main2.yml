@@ -14,10 +14,8 @@ jobs:
       id: auth
       run: |
         # Rastgele şifre oluştur
-        $passwordLength = 12
-        $nonAlphaChars = 5
-        Add-Type -AssemblyName 'System.Web'
-        $randomPart = [System.Web.Security.Membership]::GeneratePassword($passwordLength, $nonAlphaChars)
+        $chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?"
+        $randomPart = -join ((1..12) | ForEach-Object { $chars[(Get-Random -Maximum $chars.Length)] })
         $vdsPassword = "Clodra.Git" + $randomPart
         
         $tokenIndex = 1
