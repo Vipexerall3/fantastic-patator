@@ -3,15 +3,14 @@ on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: windows-latest
-    outputs:
-      endpoint: ${{ steps.get_endpoint.outputs.endpoint }}
     steps:
-    - name: Download
+    - name: İndirme
       run: Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
-    - name: Extract
+    
+    - name: Çıkartma
       run: Expand-Archive ngrok.zip
-    - name: Auth and Create Tunnel
-      id: get_endpoint
+    
+    - name: Kimlik Doğrulama ve Tünel Oluşturma
       run: |
         $tokenIndex = 1
         $success = $false
@@ -21,30 +20,31 @@ jobs:
           $token = [Environment]::GetEnvironmentVariable($tokenName)
           
           if ($token) {
-            Write-Host "Attempting with token #$tokenIndex..."
+            Write-Host "Token #$tokenIndex ile deneniyor..."
             try {
               & .\ngrok\ngrok.exe authtoken $token 2>&1
               
-              # Enable TS and RDP settings
+              # TS ve RDP ayarlarını etkinleştir
               Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
               Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
               Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
               Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "VipexB!3" -Force)
               
-              # Start ngrok and capture endpoint
+              # Ngrok'u başlat ve endpoint'i yakala
               $ngrok = Start-Process .\ngrok\ngrok.exe -ArgumentList "tcp","3389" -PassThru -NoNewWindow -RedirectStandardOutput "ngrok.log"
               Start-Sleep -Seconds 10
               
-              # Read ngrok endpoint from API
+              # Ngrok endpoint'ini API'den oku
               $api = Invoke-RestMethod -Uri "http://localhost:4040/api/tunnels"
               $endpoint = $api.tunnels[0].public_url -replace "tcp://", ""
               
-              Write-Host "::set-output name=endpoint::$endpoint"
+              # Yeni environment file syntax'ı kullanarak endpoint'i kaydet
+              "endpoint=$endpoint" >> $env:GITHUB_OUTPUT
               
-              # Keep the tunnel running
+              # Tüneli açık tut
               while ($true) {
                 if ($ngrok.HasExited) {
-                  Write-Host "Ngrok terminated, restarting..."
+                  Write-Host "Ngrok sonlandı, yeniden başlatılıyor..."
                   $ngrok = Start-Process .\ngrok\ngrok.exe -ArgumentList "tcp","3389" -PassThru -NoNewWindow
                 }
                 Start-Sleep -Seconds 10
@@ -53,12 +53,12 @@ jobs:
               $success = $true
               
             } catch {
-              Write-Host "Token #$tokenIndex failed with error: $_"
-              Write-Host "Trying next token..."
+              Write-Host "Token #$tokenIndex şu hatayla başarısız oldu: $_"
+              Write-Host "Sonraki token deneniyor..."
               $tokenIndex++
             }
           } else {
-            Write-Host "Token #$tokenName not found, exiting..."
+            Write-Host "Token #$tokenName bulunamadı, çıkılıyor..."
             exit 1
           }
         }
@@ -74,17 +74,13 @@ jobs:
         NGROK_AUTH_TOKEN_9: ${{ secrets.NGROK_AUTH_TOKEN_9 }}
         NGROK_AUTH_TOKEN_10: ${{ secrets.NGROK_AUTH_TOKEN_10 }}
 
-  VDS-Bilgileri:
-    needs: build
-    runs-on: windows-latest
-    steps:
-    - name: VDS Bilgileri
+    - name: VDS Bilgilerini Görüntüle
       run: |
         Write-Host "🌟 VDS BAĞLANTI BİLGİLERİ 🌟"
         Write-Host "==============================="
         Write-Host "👤 Kullanıcı Adı: runneradmin"
         Write-Host "🔑 Şifre: VipexB!3"
         Write-Host "🌐 Port: 3389"
-        Write-Host "🔗 Bağlantı Adresi: ${{ needs.build.outputs.endpoint }}"
+        Write-Host "🔗 Bağlantı Adresi: ${{ steps.get_endpoint.outputs.endpoint }}"
         Write-Host "==============================="
         Write-Host "✅ VDS aktif ve bağlantıya hazır!"
