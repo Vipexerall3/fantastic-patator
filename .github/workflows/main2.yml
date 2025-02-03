@@ -33,6 +33,14 @@ jobs:
               
               $success = $true
               Write-Host "Successfully connected with token #$tokenIndex"
+              
+              # Get ngrok endpoint
+              $apiUrl = "http://127.0.0.1:4040/api/tunnels"
+              Start-Sleep -Seconds 3
+              $tunnels = Invoke-RestMethod -Uri $apiUrl
+              $publicUrl = $tunnels.tunnels[0].public_url
+              Write-Host "NGROK Endpoint: $publicUrl"
+              
             } catch {
               Write-Host "Token #$tokenIndex failed with error: $_"
               Write-Host "Trying next token..."
