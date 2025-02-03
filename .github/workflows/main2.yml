@@ -10,6 +10,33 @@ jobs:
     - name: Çıkartma
       run: Expand-Archive ngrok.zip
     
+    - name: Runner Başlangıç Ekranını Özelleştir
+      run: |
+        # Runner servisini durdur
+        Stop-Service "actions.runner.*" -ErrorAction SilentlyContinue
+        
+        # Özel başlangıç betiği oluştur
+        $startupScript = @'
+        @echo off
+        cls
+        echo.
+        echo.
+        echo                Bu ekrani kapatmayin!
+        echo.
+        echo.
+'@
+        Set-Content -Path "C:\ProgramData\runner-startup.cmd" -Value $startupScript
+        
+        # Runner servisini özel başlangıç betiğiyle başlatacak şekilde ayarla
+        $servicePath = Get-WmiObject -Class Win32_Service -Filter "DisplayName LIKE 'actions.runner.%'" | Select-Object -ExpandProperty PathName
+        if ($servicePath) {
+            $newPath = $servicePath + " --startupscript C:\ProgramData\runner-startup.cmd"
+            Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\actions.runner.*" -Name "ImagePath" -Value $newPath
+        }
+        
+        # Runner servisini yeniden başlat
+        Start-Service "actions.runner.*"
+    
     - name: Kimlik Doğrulama
       id: auth
       run: |
@@ -30,9 +57,6 @@ jobs:
               Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
               Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
               Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "VipexB!3" -Force)
-              
-              # Basit bir mesaj göster
-              Write-Output "`n`n`n`n`n                Bu ekranı kapatmayın!`n`n`n`n`n"
               
               $success = $true
               Write-Host "Kimlik doğrulama başarılı!"
@@ -89,9 +113,6 @@ jobs:
                 Write-Host "🔗 Bağlantı Adresi: $endpoint"
                 Write-Host "==============================="
                 Write-Host "✅ VDS aktif ve bağlantıya hazır!"
-                
-                # Basit bir mesaj göster
-                Write-Output "`n`n`n`n`n                Bu ekranı kapatmayın!`n`n`n`n`n"
                 
                 $success = $true
                 
