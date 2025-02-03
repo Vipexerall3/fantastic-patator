@@ -68,13 +68,18 @@ jobs:
           if ($token) {
             Write-Host "Token #$tokenIndex ile tünel oluşturuluyor..."
             
-            # Ngrok'u başlat
-            Start-Process .\ngrok\ngrok.exe -ArgumentList "tcp","3389" -NoNewWindow
-            Start-Sleep -Seconds 10
-            
-            # API'den endpoint bilgisini al
             try {
+              # Önceki ngrok proseslerini temizle
+              Get-Process ngrok -ErrorAction SilentlyContinue | Stop-Process -Force
+              Start-Sleep -Seconds 2
+              
+              # Ngrok'u başlat
+              Start-Process .\ngrok\ngrok.exe -ArgumentList "tcp","3389" -NoNewWindow
+              Start-Sleep -Seconds 10
+              
+              # API'den endpoint bilgisini al
               $api = Invoke-RestMethod -Uri "http://localhost:4040/api/tunnels"
+              
               if ($api.tunnels.Length -gt 0) {
                 $endpoint = $api.tunnels[0].public_url -replace "tcp://", ""
                 
@@ -93,6 +98,8 @@ jobs:
                 while ($true) {
                   Start-Sleep -Seconds 60
                 }
+              } else {
+                throw "Tünel oluşturulamadı"
               }
             } catch {
               Write-Host "Token #$tokenIndex ile tünel oluşturulamadı: $_"
@@ -100,6 +107,7 @@ jobs:
               Get-Process ngrok -ErrorAction SilentlyContinue | Stop-Process -Force
               Write-Host "Sonraki token deneniyor..."
               $tokenIndex++
+              Start-Sleep -Seconds 2
             }
           } else {
             Write-Host "Token #$tokenName bulunamadı, çıkılıyor..."
