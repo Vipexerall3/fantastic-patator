@@ -1,4 +1,4 @@
-name: CI2
+name: CI
 on: [push, workflow_dispatch]
 jobs:
   build:
@@ -20,17 +20,27 @@ jobs:
           if ($token) {
             Write-Host "Attempting with token #$tokenIndex..."
             try {
-              .\ngrok\ngrok.exe authtoken $token
-              .\ngrok\ngrok.exe tcp 3389
+              & .\ngrok\ngrok.exe authtoken $token 2>&1
+              $process = Start-Process -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp","3389" -PassThru -RedirectStandardError "error.txt"
+              Start-Sleep -Seconds 5
+              
+              if (Get-Content "error.txt" -ErrorAction SilentlyContinue | Select-String "ERR_NGROK_108") {
+                Write-Host "Token #$tokenIndex failed (simultaneous session limit), trying next token..."
+                Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+                $tokenIndex++
+                continue
+              }
+              
               $success = $true
               Write-Host "Successfully connected with token #$tokenIndex"
             } catch {
-              Write-Host "Token #$tokenIndex failed, trying next token..."
+              Write-Host "Token #$tokenIndex failed with error: $_"
+              Write-Host "Trying next token..."
               $tokenIndex++
             }
           } else {
-            Write-Host "$tokenName not found, trying next token..."
-            $tokenIndex++
+            Write-Host "$tokenName not found, exiting..."
+            exit 1
           }
         }
       env:
