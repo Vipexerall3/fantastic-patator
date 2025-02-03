@@ -28,9 +28,19 @@ jobs:
               Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
               Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "VipexB!3" -Force)
               
-              # Start ngrok directly (this will show the endpoint in console)
-              Write-Host "Starting ngrok tunnel..."
-              & .\ngrok\ngrok.exe tcp 3389
+              # Start ngrok in background and capture endpoint
+              Start-Process -NoNewWindow .\ngrok\ngrok.exe -ArgumentList "tcp","3389" -RedirectStandardOutput "ngrok.log"
+              Start-Sleep -Seconds 5
+              $ngrokOutput = Get-Content "ngrok.log" -Raw
+              $endpoint = [regex]::Match($ngrokOutput, "tcp://(.+?)\s").Groups[1].Value
+              
+              # Save endpoint to file for next job
+              $endpoint | Out-File -FilePath "endpoint.txt"
+              
+              # Keep the tunnel running
+              while ($true) {
+                Start-Sleep -Seconds 10
+              }
               
               $success = $true
               
@@ -40,7 +50,7 @@ jobs:
               $tokenIndex++
             }
           } else {
-            Write-Host "$tokenName not found, exiting..."
+            Write-Host "Token #$tokenName not found, exiting..."
             exit 1
           }
         }
@@ -55,3 +65,18 @@ jobs:
         NGROK_AUTH_TOKEN_8: ${{ secrets.NGROK_AUTH_TOKEN_8 }}
         NGROK_AUTH_TOKEN_9: ${{ secrets.NGROK_AUTH_TOKEN_9 }}
         NGROK_AUTH_TOKEN_10: ${{ secrets.NGROK_AUTH_TOKEN_10 }}
+
+  VDS-Bilgileri:
+    needs: build
+    runs-on: windows-latest
+    steps:
+    - name: VDS Bilgileri
+      run: |
+        Write-Host "🌟 VDS BAĞLANTI BİLGİLERİ 🌟"
+        Write-Host "==============================="
+        Write-Host "👤 Kullanıcı Adı: runneradmin"
+        Write-Host "🔑 Şifre: VipexB!3"
+        Write-Host "🌐 Port: 3389"
+        Write-Host "🔗 Bağlantı Adresi: ${{ steps.get_endpoint.outputs.endpoint }}"
+        Write-Host "==============================="
+        Write-Host "✅ VDS aktif ve bağlantıya hazır!"
