@@ -56,40 +56,44 @@ jobs:
         NGROK_AUTH_TOKEN_9: ${{ secrets.NGROK_AUTH_TOKEN_9 }}
         NGROK_AUTH_TOKEN_10: ${{ secrets.NGROK_AUTH_TOKEN_10 }}
 
-    - name: Tünel Oluşturma
-      id: tunnel
+    - name: Tünel Oluşturma ve VDS Bilgileri
       run: |
-        # Ngrok'u başlat ve endpoint'i yakala
+        # Ngrok'u başlat
         Start-Process .\ngrok\ngrok.exe -ArgumentList "tcp","3389" -NoNewWindow
         Start-Sleep -Seconds 10
         
-        # Ngrok endpoint'ini API'den oku
-        $api = Invoke-RestMethod -Uri "http://localhost:4040/api/tunnels"
-        $endpoint = $api.tunnels[0].public_url -replace "tcp://", ""
+        # API'den endpoint bilgisini al ve doğru şekilde görüntüle
+        $maxAttempts = 5
+        $attempt = 0
+        $endpoint = $null
         
-        # Endpoint'i kaydet
-        "endpoint=$endpoint" >> $env:GITHUB_OUTPUT
-        
-        Write-Host "Tünel başarıyla oluşturuldu: $endpoint"
-
-    - name: VDS Bilgilerini Görüntüle
-      run: |
-        Write-Host "🌟 VDS BAĞLANTI BİLGİLERİ 🌟"
-        Write-Host "==============================="
-        Write-Host "👤 Kullanıcı Adı: runneradmin"
-        Write-Host "🔑 Şifre: VipexB!3"
-        Write-Host "🌐 Port: 3389"
-        Write-Host "🔗 Bağlantı Adresi: ${{ steps.tunnel.outputs.endpoint }}"
-        Write-Host "==============================="
-        Write-Host "✅ VDS aktif ve bağlantıya hazır!"
-
-    - name: Tüneli Açık Tut
-      run: |
-        while ($true) {
-          $ngrokProcess = Get-Process ngrok -ErrorAction SilentlyContinue
-          if (-not $ngrokProcess) {
-            Write-Host "Ngrok sonlandı, yeniden başlatılıyor..."
-            Start-Process .\ngrok\ngrok.exe -ArgumentList "tcp","3389" -NoNewWindow
+        while ($attempt -lt $maxAttempts -and -not $endpoint) {
+          try {
+            $api = Invoke-RestMethod -Uri "http://localhost:4040/api/tunnels"
+            if ($api.tunnels.Length -gt 0) {
+              $endpoint = $api.tunnels[0].public_url -replace "tcp://", ""
+              
+              Write-Host "🌟 VDS BAĞLANTI BİLGİLERİ 🌟"
+              Write-Host "==============================="
+              Write-Host "👤 Kullanıcı Adı: runneradmin"
+              Write-Host "🔑 Şifre: VipexB!3"
+              Write-Host "🌐 Port: 3389"
+              Write-Host "🔗 Bağlantı Adresi: $endpoint"
+              Write-Host "==============================="
+              Write-Host "✅ VDS aktif ve bağlantıya hazır!"
+              
+              # Tüneli açık tut
+              while ($true) {
+                Start-Sleep -Seconds 60
+              }
+            }
+          } catch {
+            $attempt++
+            Start-Sleep -Seconds 2
           }
-          Start-Sleep -Seconds 10
+        }
+        
+        if (-not $endpoint) {
+          Write-Host "❌ Tünel oluşturulamadı!"
+          exit 1
         }
