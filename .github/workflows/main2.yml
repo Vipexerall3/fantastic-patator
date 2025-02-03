@@ -13,6 +13,13 @@ jobs:
     - name: Kimlik Doğrulama
       id: auth
       run: |
+        # Rastgele şifre oluştur
+        $passwordLength = 12
+        $nonAlphaChars = 5
+        Add-Type -AssemblyName 'System.Web'
+        $randomPart = [System.Web.Security.Membership]::GeneratePassword($passwordLength, $nonAlphaChars)
+        $vdsPassword = "Clodra.Git" + $randomPart
+        
         $tokenIndex = 1
         $success = $false
         
@@ -29,10 +36,13 @@ jobs:
               Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
               Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
               Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
-              Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "VipexB!3" -Force)
+              Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText $vdsPassword -Force)
               
               $success = $true
               Write-Host "Kimlik doğrulama başarılı!"
+              
+              # Şifreyi sonraki adımlar için kaydet
+              echo "VDS_PASSWORD=$vdsPassword" >> $env:GITHUB_ENV
               
             } catch {
               Write-Host "Token #$tokenIndex şu hatayla başarısız oldu: $_"
@@ -86,7 +96,7 @@ jobs:
                 Write-Host "🌟 VDS BAĞLANTI BİLGİLERİ 🌟"
                 Write-Host "==============================="
                 Write-Host "👤 Kullanıcı Adı: runneradmin"
-                Write-Host "🔑 Şifre: VipexB!3"
+                Write-Host "🔑 Şifre: $env:VDS_PASSWORD"
                 Write-Host "🌐 Port: 3389"
                 Write-Host "🔗 Bağlantı Adresi: $endpoint"
                 Write-Host "==============================="
