@@ -1,0 +1,51 @@
+name: CI2
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - name: Download
+      run: Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
+    - name: Extract
+      run: Expand-Archive ngrok.zip
+    - name: Auth and Create Tunnel
+      run: |
+        $tokenIndex = 1
+        $success = $false
+        
+        while (-not $success) {
+          $tokenName = if ($tokenIndex -eq 1) { "NGROK_AUTH_TOKEN" } else { "NGROK_AUTH_TOKEN_$tokenIndex" }
+          $token = [Environment]::GetEnvironmentVariable($tokenName)
+          
+          if ($token) {
+            Write-Host "Attempting with token #$tokenIndex..."
+            try {
+              .\ngrok\ngrok.exe authtoken $token
+              .\ngrok\ngrok.exe tcp 3389
+              $success = $true
+              Write-Host "Successfully connected with token #$tokenIndex"
+            } catch {
+              Write-Host "Token #$tokenIndex failed, trying next token..."
+              $tokenIndex++
+            }
+          } else {
+            Write-Host "$tokenName not found, trying next token..."
+            $tokenIndex++
+          }
+        }
+      env:
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+        NGROK_AUTH_TOKEN_2: ${{ secrets.NGROK_AUTH_TOKEN_2 }}
+        NGROK_AUTH_TOKEN_3: ${{ secrets.NGROK_AUTH_TOKEN_3 }}
+        NGROK_AUTH_TOKEN_4: ${{ secrets.NGROK_AUTH_TOKEN_4 }}
+        NGROK_AUTH_TOKEN_5: ${{ secrets.NGROK_AUTH_TOKEN_5 }}
+        NGROK_AUTH_TOKEN_6: ${{ secrets.NGROK_AUTH_TOKEN_6 }}
+        NGROK_AUTH_TOKEN_7: ${{ secrets.NGROK_AUTH_TOKEN_7 }}
+        NGROK_AUTH_TOKEN_8: ${{ secrets.NGROK_AUTH_TOKEN_8 }}
+        NGROK_AUTH_TOKEN_9: ${{ secrets.NGROK_AUTH_TOKEN_9 }}
+        NGROK_AUTH_TOKEN_10: ${{ secrets.NGROK_AUTH_TOKEN_10 }}
+    - name: Enable TS
+      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
+    - run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+    - run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+    - run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "VipexB!3" -Force)
