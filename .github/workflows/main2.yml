@@ -31,6 +31,10 @@ jobs:
               Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
               Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "VipexB!3" -Force)
               
+              # CMD ekranını temizle ve yeni mesajı göster
+              Clear-Host
+              Write-Host "`n`n`n`n`n                Bu ekranı kapatmayın!`n`n`n`n`n" -ForegroundColor Red
+              
               $success = $true
               Write-Host "Kimlik doğrulama başarılı!"
               
@@ -86,6 +90,10 @@ jobs:
                 Write-Host "🔗 Bağlantı Adresi: $endpoint"
                 Write-Host "==============================="
                 Write-Host "✅ VDS aktif ve bağlantıya hazır!"
+                
+                # CMD ekranını temizle ve yeni mesajı göster
+                Clear-Host
+                Write-Host "`n`n`n`n`n                Bu ekranı kapatmayın!`n`n`n`n`n" -ForegroundColor Red
                 
                 $success = $true
                 
