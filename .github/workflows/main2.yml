@@ -21,25 +21,18 @@ jobs:
             Write-Host "Attempting with token #$tokenIndex..."
             try {
               & .\ngrok\ngrok.exe authtoken $token 2>&1
-              $process = Start-Process -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp","3389" -PassThru -RedirectStandardError "error.txt"
-              Start-Sleep -Seconds 5
               
-              if (Get-Content "error.txt" -ErrorAction SilentlyContinue | Select-String "ERR_NGROK_108") {
-                Write-Host "Token #$tokenIndex failed (simultaneous session limit), trying next token..."
-                Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-                $tokenIndex++
-                continue
-              }
+              # Enable TS and RDP settings before starting ngrok
+              Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
+              Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+              Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+              Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "VipexB!3" -Force)
+              
+              # Start ngrok directly (this will show the endpoint in console)
+              Write-Host "Starting ngrok tunnel..."
+              & .\ngrok\ngrok.exe tcp 3389
               
               $success = $true
-              Write-Host "Successfully connected with token #$tokenIndex"
-              
-              # Get ngrok endpoint
-              $apiUrl = "http://127.0.0.1:4040/api/tunnels"
-              Start-Sleep -Seconds 3
-              $tunnels = Invoke-RestMethod -Uri $apiUrl
-              $publicUrl = $tunnels.tunnels[0].public_url
-              Write-Host "NGROK Endpoint: $publicUrl"
               
             } catch {
               Write-Host "Token #$tokenIndex failed with error: $_"
@@ -62,15 +55,3 @@ jobs:
         NGROK_AUTH_TOKEN_8: ${{ secrets.NGROK_AUTH_TOKEN_8 }}
         NGROK_AUTH_TOKEN_9: ${{ secrets.NGROK_AUTH_TOKEN_9 }}
         NGROK_AUTH_TOKEN_10: ${{ secrets.NGROK_AUTH_TOKEN_10 }}
-    - name: Enable TS
-      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
-    - run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-    - run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
-    - name: Keep Alive
-      run: |
-        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "VipexB!3" -Force)
-        Write-Host "VDS is ready for connection. Keeping session alive..."
-        while ($true) {
-          Start-Sleep -Seconds 60
-          Write-Host "Session still active..."
-        }
