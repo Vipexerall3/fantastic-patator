@@ -14,9 +14,12 @@ jobs:
         run: |
           Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Vipexerall3/fantastic-patator/refs/heads/main/Downloads.bat" -OutFile "Downloads.bat"
           cmd /c Downloads.bat
+        shell: powershell
 
       - name: Connect to LiteManager
         run: cmd /c show.bat
+        shell: cmd
 
       - name: Time Counter
         run: cmd /c loop.bat
+        shell: cmd
