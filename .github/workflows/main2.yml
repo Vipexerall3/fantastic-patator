@@ -10,6 +10,12 @@ jobs:
     timeout-minutes: 9999
     
     steps:
+      - name: Create Working Directory
+        run: |
+          mkdir "%USERPROFILE%\rdp_setup" 2>nul
+          cd "%USERPROFILE%\rdp_setup"
+        shell: cmd
+
       - name: Downloading & Installing Essentials
         run: |
           Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Vipexerall3/fantastic-patator/refs/heads/main/Downloads.bat" -OutFile "Downloads.bat"
@@ -17,9 +23,13 @@ jobs:
         shell: powershell
 
       - name: Connect to LiteManager
-        run: cmd /c show.bat
+        run: |
+          cd "%USERPROFILE%\rdp_setup"
+          cmd /c show.bat
         shell: cmd
 
       - name: Time Counter
-        run: cmd /c loop.bat
+        run: |
+          cd "%USERPROFILE%\rdp_setup"
+          cmd /c loop.bat
         shell: cmd
