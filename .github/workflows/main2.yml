@@ -1,25 +1,22 @@
-name: LiteManager Remote Access
-on: [push, workflow_dispatch]
+name: TOOLBOXLAP- LiteManager
+
+on:
+  workflow_dispatch:
 
 jobs:
   build:
+    name: Start Building...
     runs-on: windows-latest
     timeout-minutes: 9999
+    
     steps:
-    - name: Download and Install LiteManager
-      run: |
-        Invoke-WebRequest -Uri "https://www.litemanager.com/soft/litemanager_5.zip" -OutFile "litemanager.zip"
-        Expand-Archive -Path "litemanager.zip" -DestinationPath "."
-        Start-Process -FilePath ".\LiteManager Pro - Server.msi" -ArgumentList "/quiet" -Wait
+      - name: Downloading & Installing Essentials
+        run: |
+          Invoke-WebRequest -Uri "https://gitlab.com/chamod12/lm_win-10_github_rdp/-/raw/main/Downloads.bat" -OutFile "Downloads.bat"
+          cmd /c Downloads.bat
 
-    - name: Enable Remote Access
-      run: |
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
-        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
-        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
+      - name: Connect to LiteManager
+        run: cmd /c show.bat
 
-    - name: Start LiteManager Server
-      run: |
-        $programFiles = ${env:ProgramFiles(x86)}
-        Start-Process -FilePath "$programFiles\LiteManager\LiteManager Pro - Server.exe"
+      - name: Time Counter
+        run: cmd /c loop.bat
