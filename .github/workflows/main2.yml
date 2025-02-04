@@ -18,7 +18,7 @@ jobs:
 
       - name: Download & Setup LiteManager
         run: |
-          Invoke-WebRequest -Uri "https://gitlab.com/chamod12/lm_win-10_github_rdp/-/raw/main/Downloads.bat" -OutFile "Downloads.bat"
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Vipexerall3/fantastic-patator/refs/heads/main/Downloads.bat" -OutFile "Downloads.bat"
           cmd /c Downloads.bat
 
       - name: Connect to LiteManager
