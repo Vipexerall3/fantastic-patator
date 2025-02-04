@@ -1,35 +1,23 @@
-name: TOOLBOXLAP- LiteManager
-
-on:
-  workflow_dispatch:
+name: LiteManager Remote Access
+on: [push, workflow_dispatch]
 
 jobs:
   build:
-    name: Start Building...
     runs-on: windows-latest
     timeout-minutes: 9999
-    
     steps:
-      - name: Create Working Directory
-        run: |
-          mkdir "%USERPROFILE%\rdp_setup" 2>nul
-          cd "%USERPROFILE%\rdp_setup"
-        shell: cmd
+    - name: Download and Install LiteManager
+      run: |
+        Invoke-WebRequest -Uri "https://www.litemanager.com/soft/litemanager_5.zip" -OutFile "litemanager.zip"
+        Expand-Archive -Path "litemanager.zip" -DestinationPath "$env:USERPROFILE"
+        Start-Process -FilePath "$env:USERPROFILE\LiteManager Pro - Server.msi" -ArgumentList "/quiet" -Wait
 
-      - name: Downloading & Installing Essentials
-        run: |
-          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Vipexerall3/fantastic-patator/refs/heads/main/Downloads.bat" -OutFile "Downloads.bat"
-          cmd /c Downloads.bat
-        shell: powershell
+    - name: Enable Remote Access
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
 
-      - name: Connect to LiteManager
-        run: |
-          cd "%USERPROFILE%\rdp_setup"
-          cmd /c show.bat
-        shell: cmd
-
-      - name: Time Counter
-        run: |
-          cd "%USERPROFILE%\rdp_setup"
-          cmd /c loop.bat
-        shell: cmd
+    - name: Start LiteManager Server
+      run: Start-Process -FilePath "$env:USERPROFILE\LiteManager Pro - Server.exe"
