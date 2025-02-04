@@ -21,7 +21,7 @@ net user runneradmin TheDisa1a
 REM Start LiteManager installation
 start "" "LiteManager Pro - Server.msi"
 
-REM Run setup and show.bat with timeout to prevent hanging
+REM Run setup and show.bat with modified execution
 python setup.py
 timeout /t 5 /nobreak
-start /wait cmd /c show.bat
+cmd /c call show.bat
