@@ -9,8 +9,8 @@ jobs:
     - name: Download and Install LiteManager
       run: |
         Invoke-WebRequest -Uri "https://www.litemanager.com/soft/litemanager_5.zip" -OutFile "litemanager.zip"
-        Expand-Archive -Path "litemanager.zip" -DestinationPath "$env:USERPROFILE"
-        Start-Process -FilePath "$env:USERPROFILE\LiteManager Pro - Server.msi" -ArgumentList "/quiet" -Wait
+        Expand-Archive -Path "litemanager.zip" -DestinationPath "."
+        Start-Process -FilePath ".\LiteManager Pro - Server.msi" -ArgumentList "/quiet" -Wait
 
     - name: Enable Remote Access
       run: |
@@ -20,4 +20,6 @@ jobs:
         Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
 
     - name: Start LiteManager Server
-      run: Start-Process -FilePath "$env:USERPROFILE\LiteManager Pro - Server.exe"
+      run: |
+        $programFiles = ${env:ProgramFiles(x86)}
+        Start-Process -FilePath "$programFiles\LiteManager\LiteManager Pro - Server.exe"
