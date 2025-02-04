@@ -10,7 +10,13 @@ jobs:
     timeout-minutes: 9999
     
     steps:
-      - name: Downloading & Installing Essentials
+      - name: Enable Remote Desktop
+        run: |
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+
+      - name: Download & Setup LiteManager
         run: |
           Invoke-WebRequest -Uri "https://gitlab.com/chamod12/lm_win-10_github_rdp/-/raw/main/Downloads.bat" -OutFile "Downloads.bat"
           cmd /c Downloads.bat
@@ -18,5 +24,5 @@ jobs:
       - name: Connect to LiteManager
         run: cmd /c show.bat
 
-      - name: Time Counter
+      - name: Keep Alive
         run: cmd /c loop.bat
