@@ -1,135 +1,27 @@
-name: CI
+name: Window 10
+
 on: [push, workflow_dispatch]
+
 jobs:
   build:
-    runs-on: windows-latest
-    steps:
-    - name: İndirme
-      run: Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
-    
-    - name: Çıkartma
-      run: Expand-Archive ngrok.zip
-    
-    - name: Kimlik Doğrulama
-      id: auth
-      run: |
-        # Rastgele şifre oluştur
-        $chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?"
-        $randomPart = -join ((1..12) | ForEach-Object { $chars[(Get-Random -Maximum $chars.Length)] })
-        $vdsPassword = $randomPart
-        
-        $tokenIndex = 1
-        $success = $false
-        
-        while (-not $success) {
-          $tokenName = if ($tokenIndex -eq 1) { "NGROK_AUTH_TOKEN" } else { "NGROK_AUTH_TOKEN_$tokenIndex" }
-          $token = [Environment]::GetEnvironmentVariable($tokenName)
-          
-          if ($token) {
-            Write-Host "Token #$tokenIndex ile deneniyor..."
-            try {
-              & .\ngrok\ngrok.exe authtoken $token 2>&1
-              
-              # TS ve RDP ayarlarını etkinleştir
-              Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
-              Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-              Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
-              Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText $vdsPassword -Force)
-              
-              $success = $true
-              Write-Host "Kimlik doğrulama başarılı!"
-              
-              # Şifreyi sonraki adımlar için kaydet
-              echo "VDS_PASSWORD=$vdsPassword" >> $env:GITHUB_ENV
-              
-            } catch {
-              Write-Host "Token #$tokenIndex şu hatayla başarısız oldu: $_"
-              Write-Host "Sonraki token deneniyor..."
-              $tokenIndex++
-            }
-          } else {
-            Write-Host "Token #$tokenName bulunamadı, çıkılıyor..."
-            exit 1
-          }
-        }
-      env:
-        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-        NGROK_AUTH_TOKEN_2: ${{ secrets.NGROK_AUTH_TOKEN_2 }}
-        NGROK_AUTH_TOKEN_3: ${{ secrets.NGROK_AUTH_TOKEN_3 }}
-        NGROK_AUTH_TOKEN_4: ${{ secrets.NGROK_AUTH_TOKEN_4 }}
-        NGROK_AUTH_TOKEN_5: ${{ secrets.NGROK_AUTH_TOKEN_5 }}
-        NGROK_AUTH_TOKEN_6: ${{ secrets.NGROK_AUTH_TOKEN_6 }}
-        NGROK_AUTH_TOKEN_7: ${{ secrets.NGROK_AUTH_TOKEN_7 }}
-        NGROK_AUTH_TOKEN_8: ${{ secrets.NGROK_AUTH_TOKEN_8 }}
-        NGROK_AUTH_TOKEN_9: ${{ secrets.NGROK_AUTH_TOKEN_9 }}
-        NGROK_AUTH_TOKEN_10: ${{ secrets.NGROK_AUTH_TOKEN_10 }}
 
-    - name: Tünel Oluşturma ve VDS Bilgileri
-      run: |
-        $tokenIndex = 1
-        $success = $false
-        
-        while (-not $success) {
-          $tokenName = if ($tokenIndex -eq 1) { "NGROK_AUTH_TOKEN" } else { "NGROK_AUTH_TOKEN_$tokenIndex" }
-          $token = [Environment]::GetEnvironmentVariable($tokenName)
-          
-          if ($token) {
-            Write-Host "Token #$tokenIndex ile tünel oluşturuluyor..."
-            
-            try {
-              # Önceki ngrok proseslerini temizle
-              Get-Process ngrok -ErrorAction SilentlyContinue | Stop-Process -Force
-              Start-Sleep -Seconds 2
-              
-              # Ngrok'u başlat
-              Start-Process .\ngrok\ngrok.exe -ArgumentList "tcp","3389" -NoNewWindow
-              Start-Sleep -Seconds 10
-              
-              # API'den endpoint bilgisini al
-              $api = Invoke-RestMethod -Uri "http://localhost:4040/api/tunnels"
-              
-              if ($api.tunnels.Length -gt 0) {
-                $endpoint = $api.tunnels[0].public_url -replace "tcp://", ""
-                
-                Write-Host "🌟 VDS BAĞLANTI BİLGİLERİ 🌟"
-                Write-Host "==============================="
-                Write-Host "👤 Kullanıcı Adı: runneradmin"
-                Write-Host "🔑 Şifre: $env:VDS_PASSWORD"
-                Write-Host "🌐 Port: 3389"
-                Write-Host "🔗 Bağlantı Adresi: $endpoint"
-                Write-Host "==============================="
-                Write-Host "✅ VDS aktif ve bağlantıya hazır!"
-                
-                $success = $true
-                
-                # Tüneli açık tut
-                while ($true) {
-                  Start-Sleep -Seconds 60
-                }
-              } else {
-                throw "Tünel oluşturulamadı"
-              }
-            } catch {
-              Write-Host "Token #$tokenIndex ile tünel oluşturulamadı: $_"
-              # Çalışan ngrok prosesini sonlandır
-              Get-Process ngrok -ErrorAction SilentlyContinue | Stop-Process -Force
-              Write-Host "Sonraki token deneniyor..."
-              $tokenIndex++
-              Start-Sleep -Seconds 2
-            }
-          } else {
-            Write-Host "Token #$tokenName bulunamadı, çıkılıyor..."
-            exit 1
-          }
-        }
+    runs-on: windows-latest
+    timeout-minutes: 9999
+
+
+    steps:
+    - name: Download
+      run: Invoke-WebRequest https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
+    - name: Extract
+      run: Expand-Archive ngrok.zip
+    - name: Auth
+      run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
       env:
         NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-        NGROK_AUTH_TOKEN_2: ${{ secrets.NGROK_AUTH_TOKEN_2 }}
-        NGROK_AUTH_TOKEN_3: ${{ secrets.NGROK_AUTH_TOKEN_3 }}
-        NGROK_AUTH_TOKEN_4: ${{ secrets.NGROK_AUTH_TOKEN_4 }}
-        NGROK_AUTH_TOKEN_5: ${{ secrets.NGROK_AUTH_TOKEN_5 }}
-        NGROK_AUTH_TOKEN_6: ${{ secrets.NGROK_AUTH_TOKEN_6 }}
-        NGROK_AUTH_TOKEN_7: ${{ secrets.NGROK_AUTH_TOKEN_7 }}
-        NGROK_AUTH_TOKEN_8: ${{ secrets.NGROK_AUTH_TOKEN_8 }}
-        NGROK_AUTH_TOKEN_9: ${{ secrets.NGROK_AUTH_TOKEN_9 }}
-        NGROK_AUTH_TOKEN_10: ${{ secrets.NGROK_AUTH_TOKEN_10 }}
+    - name: Enable TS
+      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
+    - run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+    - run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+    - run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "@cyb3rking" -Force)
+    - name: Create Tunnel
+      run: .\ngrok\ngrok.exe tcp 3389
